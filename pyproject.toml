@@ -10,6 +10,18 @@ dependencies = [
     "httpx>=0.27.0",
 ]
 
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+[project.urls]
+Homepage = "https://plurity.ai"
+Repository = "https://github.com/plurity-ai/plurity-mcp"
+"Bug Tracker" = "https://github.com/plurity-ai/plurity-mcp/issues"
+
 [project.scripts]
 plurity-mcp = "plurity_mcp.server:main"
 plurity-mcp-setup = "plurity_mcp.setup:main"
