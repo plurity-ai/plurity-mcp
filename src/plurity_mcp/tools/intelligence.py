@@ -44,12 +44,10 @@ def register_intelligence_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> N
         source_type: Optional[str] = None,
         query: Optional[str] = None,
     ) -> str:
-        """List all available content sources in the Plurity Intelligence catalogue.
+        """List the content sources your organisation is subscribed to.
 
-        This is the global registry of sources Plurity monitors — LinkedIn
-        profiles, YouTube channels, publishers, newsletters, and academic
-        publications. Use ``list_subscribed_intelligence_sources`` to see
-        which ones your organisation follows.
+        Returns the sources your org currently follows, optionally filtered
+        by type or a search term.
 
         Args:
             source_type: Filter by type — one of ``"linkedin"``, ``"youtube"``,
@@ -59,16 +57,16 @@ def register_intelligence_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> N
         Returns:
             JSON with a ``sources`` array. Each item has ``id``, ``name``,
             ``handle``, ``url``, ``type``, ``description``, ``tags``,
-            ``avatar_url``, ``follower_count``, ``post_frequency``.
+            ``avatar_url``, ``post_frequency``.
         """
         return _wrap(lambda c: c.list_sources(type=source_type, q=query))
 
     @mcp.tool()
     def list_subscribed_intelligence_sources() -> str:
-        """List the content sources your organisation is subscribed to.
+        """List the content sources your organisation is subscribed to, with subscription metadata.
 
-        Returns the subset of the global catalogue that your org follows,
-        along with subscription metadata (start date, subscribed at).
+        Same sources as ``list_intelligence_sources`` but includes
+        ``start_date`` and ``subscribed_at`` for each entry.
 
         Returns:
             JSON with a ``subscriptions`` array. Each item has ``source_id``,
