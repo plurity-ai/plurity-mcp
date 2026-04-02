@@ -1,0 +1,22 @@
+[project]
+name = "plurity-mcp"
+version = "0.1.0"
+description = "Unified MCP server for all Plurity services (Audit, Toll, Intelligence)"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12"
+dependencies = [
+    "mcp>=1.6.0",
+    "httpx>=0.27.0",
+]
+
+[project.scripts]
+plurity-mcp = "plurity_mcp.server:main"
+plurity-mcp-setup = "plurity_mcp.setup:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/plurity_mcp"]
