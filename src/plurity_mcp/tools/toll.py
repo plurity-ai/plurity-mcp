@@ -116,19 +116,28 @@ def register_toll_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> None:
         )
 
     @mcp.tool()
-    def get_toll_installation_instructions(site_id: str) -> str:
+    def get_toll_installation_instructions(
+        site_id: str,
+        framework: str = "all",
+    ) -> str:
         """Get installation instructions for adding Toll tracking to a project.
 
-        Fetches the site details and returns step-by-step instructions for
-        integrating the tracking snippet, including framework-specific options.
+        Fetches the site details and returns markdown-formatted, step-by-step
+        instructions for integrating the tracking snippet for the specified
+        framework.
 
         Args:
             site_id: The site UUID.
+            framework: The target framework. One of ``"squarespace"``,
+                       ``"nextjs"``, ``"express"``, ``"html"``, or ``"all"``
+                       (default). When ``"all"`` is given, instructions for
+                       every framework are returned; otherwise only the
+                       requested framework's instructions are included.
 
         Returns:
-            JSON with ``site_key``, ``domain``, ``llms_txt_url``, and
-            ``instructions`` (an object with code snippets for different
-            frameworks: ``html``, ``nextjs``, ``react``, ``gtm``).
+            JSON with ``site_id``, ``site_key``, ``domain``, ``framework``,
+            and ``instructions`` — an object whose keys are framework names
+            and whose values are markdown-formatted installation guides.
         """
         try:
             with _client() as c:
@@ -142,54 +151,155 @@ def register_toll_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> None:
         domain = site.get("site", {}).get("domain", site.get("domain", ""))
         toll_base = config.toll.base_url
 
-        instructions = {
-            "html": (
-                f'<!-- Add before </body> on every page -->\n'
-                f'<script\n'
-                f'  src="{toll_base}/sdk/v1/toll.js"\n'
-                f'  data-site-key="{site_key}"\n'
-                f'  async\n'
-                f'></script>'
-            ),
-            "nextjs": (
-                "// app/layout.tsx (or pages/_app.tsx)\n"
-                "import Script from 'next/script';\n\n"
-                "// Add inside your root layout <body>:\n"
-                f'<Script\n'
-                f'  src="{toll_base}/sdk/v1/toll.js"\n'
-                f'  data-site-key="{site_key}"\n'
-                f'  strategy="afterInteractive"\n'
-                f'/>'
-            ),
-            "react": (
-                "// Add to your root component (e.g. App.tsx)\n"
-                "useEffect(() => {\n"
-                "  const s = document.createElement('script');\n"
-                f'  s.src = "{toll_base}/sdk/v1/toll.js";\n'
-                f'  s.setAttribute("data-site-key", "{site_key}");\n'
-                "  s.async = true;\n"
-                "  document.body.appendChild(s);\n"
-                "}, []);"
-            ),
-            "gtm": (
-                "In Google Tag Manager, create a Custom HTML tag:\n\n"
-                f'<script\n'
-                f'  src="{toll_base}/sdk/v1/toll.js"\n'
-                f'  data-site-key="{site_key}"\n'
-                f'  async\n'
-                f'></script>\n\n'
-                "Trigger: All Pages — Page View."
-            ),
+        def _sub(template: str) -> str:
+            """Substitute site-specific values into a markdown template."""
+            return (
+                template
+                .replace("{site_id}", site_id)
+                .replace("{site_key}", site_key)
+                .replace("{toll_base}", toll_base)
+            )
+
+        squarespace_md = _sub(
+            "## Squarespace Setup\n"
+            "\n"
+            "**Step 1 — Add the script tag**\n"
+            "\n"
+            "In Squarespace → Settings → Advanced → Code Injection (header), paste:\n"
+            "\n"
+            "```html\n"
+            "<script\n"
+            "  src=\"https://cdn.plurity.ai/toll.js\"\n"
+            "  data-site-id=\"{site_id}\"\n"
+            "  data-site-key=\"{site_key}\"\n"
+            "  async\n"
+            "></script>\n"
+            "```\n"
+            "\n"
+            "**Step 2 — llms.txt redirect**\n"
+            "\n"
+            "In Squarespace → Settings → Advanced → URL Redirects, add a 301 redirect:\n"
+            "- From: `/llms.txt`\n"
+            "- To: `{toll_base}/api/public/{site_id}/llms.txt?key={site_key}`\n"
+            "\n"
+            "**Step 3 — llms-full.txt redirect (optional)**\n"
+            "\n"
+            "Add another 301 redirect:\n"
+            "- From: `/llms-full.txt`\n"
+            "- To: `{toll_base}/api/public/{site_id}/llms-full.txt?key={site_key}`\n"
+        )
+
+        nextjs_md = _sub(
+            "## Next.js Setup\n"
+            "\n"
+            "**Step 1 — Install**\n"
+            "\n"
+            "```bash\n"
+            "npm install @plurity/toll-nextjs\n"
+            "```\n"
+            "\n"
+            "**Step 2 — Add to .env.local**\n"
+            "\n"
+            "```\n"
+            "TOLL_SITE_ID={site_id}\n"
+            "TOLL_SITE_KEY={site_key}\n"
+            "```\n"
+            "\n"
+            "**Step 3 — Add to middleware.ts**\n"
+            "\n"
+            "```typescript\n"
+            "import { createTollMiddleware } from '@plurity/toll-nextjs'\n"
+            "import type { NextRequest } from 'next/server'\n"
+            "import { NextResponse } from 'next/server'\n"
+            "\n"
+            "const toll = createTollMiddleware({\n"
+            "  siteId: process.env.TOLL_SITE_ID!,\n"
+            "  siteKey: process.env.TOLL_SITE_KEY!,\n"
+            "})\n"
+            "\n"
+            "export async function middleware(request: NextRequest) {\n"
+            "  const tollResponse = await toll(request)\n"
+            "  if (tollResponse) return tollResponse\n"
+            "  return NextResponse.next()\n"
+            "}\n"
+            "```\n"
+        )
+
+        express_md = _sub(
+            "## Express Setup\n"
+            "\n"
+            "**Step 1 — Install**\n"
+            "\n"
+            "```bash\n"
+            "npm install @plurity/toll @plurity/toll-express\n"
+            "```\n"
+            "\n"
+            "**Step 2 — Add environment variables**\n"
+            "\n"
+            "```\n"
+            "TOLL_SITE_ID={site_id}\n"
+            "TOLL_SITE_KEY={site_key}\n"
+            "```\n"
+            "\n"
+            "**Step 3 — Add middleware**\n"
+            "\n"
+            "```typescript\n"
+            "import { createTollMiddleware, createLlmsTxtHandler } from '@plurity/toll-express'\n"
+            "import { PlurityBackend } from '@plurity/toll'\n"
+            "\n"
+            "const backend = new PlurityBackend({ siteKey: process.env.TOLL_SITE_KEY! })\n"
+            "\n"
+            "app.use(createTollMiddleware({ siteId: process.env.TOLL_SITE_ID!, backend }))\n"
+            "app.get('/llms.txt', createLlmsTxtHandler({ siteId: process.env.TOLL_SITE_ID!, backend }))\n"
+            "```\n"
+        )
+
+        html_md = _sub(
+            "## HTML / Any Site Setup\n"
+            "\n"
+            "**Step 1 — Add the script tag**\n"
+            "\n"
+            "Paste before `</body>` on every page:\n"
+            "\n"
+            "```html\n"
+            "<script\n"
+            "  src=\"https://cdn.plurity.ai/toll.js\"\n"
+            "  data-site-id=\"{site_id}\"\n"
+            "  data-site-key=\"{site_key}\"\n"
+            "  async\n"
+            "></script>\n"
+            "```\n"
+            "\n"
+            "**Step 2 — Serve llms.txt**\n"
+            "\n"
+            "Redirect `/llms.txt` on your server to:\n"
+            "`{toll_base}/api/public/{site_id}/llms.txt?key={site_key}`\n"
+        )
+
+        all_instructions = {
+            "squarespace": squarespace_md,
+            "nextjs": nextjs_md,
+            "express": express_md,
+            "html": html_md,
         }
 
+        valid_frameworks = set(all_instructions.keys()) | {"all"}
+        if framework not in valid_frameworks:
+            return _err(
+                f"Unknown framework {framework!r}. "
+                f"Valid values: {sorted(valid_frameworks)}"
+            )
+
+        if framework == "all":
+            instructions = all_instructions
+        else:
+            instructions = {framework: all_instructions[framework]}
+
         return _ok({
+            "site_id": site_id,
             "site_key": site_key,
             "domain": domain,
-            "llms_txt_url": f"https://{domain}/llms.txt",
-            "note": (
-                "The snippet auto-detects visiting AI agents and bots. "
-                "It also serves your llms.txt dynamically via the Toll CDN."
-            ),
+            "framework": framework,
             "instructions": instructions,
         })
 
