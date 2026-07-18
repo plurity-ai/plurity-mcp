@@ -1,6 +1,6 @@
 [project]
 name = "plurity-mcp"
-version = "0.1.0"
+version = "0.1.1"
 description = "Unified MCP server for all Plurity services (Audit, Toll, Intelligence)"
 readme = "README.md"
 license = { text = "MIT" }
