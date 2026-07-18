@@ -147,6 +147,7 @@ class TollClient(_BaseClient):
         domain: Optional[str] = None,
         cache_ttl_secs: Optional[int] = None,
         llms_txt_mode: Optional[str] = None,
+        llms_preamble: Optional[str] = None,
     ) -> dict[str, Any]:
         body: dict[str, Any] = {}
         if name is not None:
@@ -157,6 +158,8 @@ class TollClient(_BaseClient):
             body["cache_ttl_secs"] = cache_ttl_secs
         if llms_txt_mode is not None:
             body["llms_txt_mode"] = llms_txt_mode
+        if llms_preamble is not None:
+            body["llms_preamble"] = llms_preamble
         return self._patch(f"/api/v1/sites/{site_id}", body)
 
     # Q&A pairs
@@ -169,10 +172,19 @@ class TollClient(_BaseClient):
         question: str,
         answer_url: str,
         answer_summary: Optional[str] = None,
+        redirect_url: Optional[str] = None,
+        slug: Optional[str] = None,
+        answer_content: Optional[str] = None,
     ) -> dict[str, Any]:
         body: dict[str, Any] = {"question": question, "answer_url": answer_url}
         if answer_summary is not None:
             body["answer_summary"] = answer_summary
+        if redirect_url is not None:
+            body["redirect_url"] = redirect_url
+        if slug is not None:
+            body["slug"] = slug
+        if answer_content is not None:
+            body["answer_content"] = answer_content
         return self._post(f"/api/v1/sites/{site_id}/qa-pairs", body)
 
     def update_qa_pair(
@@ -182,6 +194,9 @@ class TollClient(_BaseClient):
         question: Optional[str] = None,
         answer_url: Optional[str] = None,
         answer_summary: Optional[str] = None,
+        redirect_url: Optional[str] = None,
+        slug: Optional[str] = None,
+        answer_content: Optional[str] = None,
         is_published: Optional[bool] = None,
     ) -> dict[str, Any]:
         body: dict[str, Any] = {}
@@ -191,12 +206,26 @@ class TollClient(_BaseClient):
             body["answer_url"] = answer_url
         if answer_summary is not None:
             body["answer_summary"] = answer_summary
+        if redirect_url is not None:
+            body["redirect_url"] = redirect_url
+        if slug is not None:
+            body["slug"] = slug
+        if answer_content is not None:
+            body["answer_content"] = answer_content
         if is_published is not None:
             body["is_published"] = is_published
         return self._patch(f"/api/v1/sites/{site_id}/qa-pairs/{pair_id}", body)
 
     def delete_qa_pair(self, site_id: str, pair_id: str) -> dict[str, Any]:
         return self._delete(f"/api/v1/sites/{site_id}/qa-pairs/{pair_id}")
+
+    def get_llms_txt(self, site_id: str, site_key: str, full: bool = False) -> str:
+        filename = "llms-full.txt" if full else "llms.txt"
+        response = self._client.get(
+            f"/api/public/{site_id}/{filename}", params={"key": site_key}
+        )
+        self._raise_for_status(response)
+        return response.text
 
     # Traffic
     def get_traffic(
@@ -209,6 +238,38 @@ class TollClient(_BaseClient):
             f"/api/v1/sites/{site_id}/events/chart",
             period=period,
             agents=agents,
+        )
+
+    def list_events(
+        self,
+        site_id: str,
+        since: Optional[str] = None,
+        until: Optional[str] = None,
+        agent_name: Optional[str] = None,
+        utm_source: Optional[str] = None,
+        utm_medium: Optional[str] = None,
+        utm_campaign: Optional[str] = None,
+        utm_content: Optional[str] = None,
+        utm_term: Optional[str] = None,
+        request_host: Optional[str] = None,
+        session_id: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        return self._get(
+            f"/api/v1/sites/{site_id}/events",
+            since=since,
+            until=until,
+            agent_name=agent_name,
+            utm_source=utm_source,
+            utm_medium=utm_medium,
+            utm_campaign=utm_campaign,
+            utm_content=utm_content,
+            utm_term=utm_term,
+            request_host=request_host,
+            session_id=session_id,
+            limit=limit,
+            offset=offset,
         )
 
 
