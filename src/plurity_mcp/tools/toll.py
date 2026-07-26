@@ -316,28 +316,51 @@ def register_toll_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> None:
     # ------------------------------------------------------------------
 
     @mcp.tool()
-    def list_toll_qa_pairs(site_id: str) -> str:
-        """List all Q&A pairs for a Toll site's llms.txt.
+    def list_toll_qa_pairs(
+        site_id: str,
+        provider: Optional[str] = None,
+        model: Optional[str] = None,
+    ) -> str:
+        """List Q&A pairs for a Toll site's llms.txt.
 
         Q&A pairs define the questions-and-answers served in llms.txt,
         helping AI agents understand your site's content and context.
 
+        Every pair is tagged with the ``provider``/``model`` it was created
+        for (e.g. "anthropic" / "claude-fable-5"), since the same site can be
+        tested through several MCP installs at once — one per AI provider.
+        Before editing or deleting a pair, check its ``provider``/``model``
+        against your own identity (as described in your system prompt or
+        skill file for this install) — a pair tagged for a different
+        provider/model is another install's test data and should generally
+        be left alone. Pass ``provider``/``model`` here to only see pairs
+        that belong to you.
+
         Args:
             site_id: The site UUID.
+            provider: Optional filter — only return pairs with this exact
+                      ``provider`` value (e.g. "anthropic").
+            model: Optional filter — only return pairs with this exact
+                   ``model`` value (e.g. "claude-fable-5").
 
         Returns:
             JSON with a ``qa_pairs`` array. Each item has ``id``,
             ``question``, ``answer_url``, ``answer_summary``,
-            ``redirect_url``, ``slug``, ``answer_content``, ``sort_order``,
-            ``is_published``, ``created_at``, ``updated_at``.
+            ``redirect_url``, ``slug``, ``answer_content``, ``provider``,
+            ``model``, ``sort_order``, ``is_published``, ``created_at``,
+            ``updated_at``.
         """
-        return _wrap(lambda c: c.list_qa_pairs(site_id=site_id))
+        return _wrap(
+            lambda c: c.list_qa_pairs(site_id=site_id, provider=provider, model=model)
+        )
 
     @mcp.tool()
     def create_toll_qa_pair(
         site_id: str,
         question: str,
         answer_url: str,
+        provider: str,
+        model: str,
         answer_summary: Optional[str] = None,
         redirect_url: Optional[str] = None,
         slug: Optional[str] = None,
@@ -349,6 +372,14 @@ def register_toll_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> None:
         agent reading llms.txt sees, and where a human clicking the same
         tracked link ends up.
 
+        ``provider`` and ``model`` are required (unlike the REST API, where
+        they are optional): this MCP server is typically installed once per
+        AI provider to test what each one discovers and how each one
+        chooses to edit its own questions, without touching another
+        provider's entries. Identify yourself with the values described in
+        your system prompt or skill file for this install (e.g.
+        provider="anthropic", model="claude-fable-5"); do not guess.
+
         Args:
             site_id: The site UUID.
             question: The question an AI agent might ask
@@ -356,6 +387,10 @@ def register_toll_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> None:
             answer_url: The agent-facing content entry point for this
                         answer (e.g. "https://acme.com/returns"). This is
                         what an agent following the link is aiming for.
+            provider: The AI provider this Q&A pair is being authored for
+                      (e.g. "anthropic", "openai"). Required.
+            model: The specific model this Q&A pair is being authored for
+                   (e.g. "claude-fable-5", "gpt-5"). Required.
             answer_summary: Optional short plain-text summary of the answer
                             (max ~200 chars), shown inline in llms.txt so
                             agents get the gist without visiting the page.
@@ -374,13 +409,30 @@ def register_toll_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> None:
                             detailed answer beyond the short summary.
 
         Returns:
-            JSON with the created Q&A pair.
+            JSON with the created Q&A pair, or a JSON ``error`` if
+            ``provider``/``model`` are missing or blank.
         """
+        if not provider or not provider.strip():
+            return _err(
+                "provider is required and cannot be blank. Set it to the AI "
+                "provider you are creating this Q&A pair for (e.g. "
+                "\"anthropic\"), as identified in your system prompt or "
+                "skill file for this MCP install."
+            )
+        if not model or not model.strip():
+            return _err(
+                "model is required and cannot be blank. Set it to the "
+                "specific model you are creating this Q&A pair for (e.g. "
+                "\"claude-fable-5\"), as identified in your system prompt "
+                "or skill file for this MCP install."
+            )
         return _wrap(
             lambda c: c.create_qa_pair(
                 site_id=site_id,
                 question=question,
                 answer_url=answer_url,
+                provider=provider.strip(),
+                model=model.strip(),
                 answer_summary=answer_summary,
                 redirect_url=redirect_url,
                 slug=slug,
@@ -398,6 +450,8 @@ def register_toll_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> None:
         redirect_url: Optional[str] = None,
         slug: Optional[str] = None,
         answer_content: Optional[str] = None,
+        provider: Optional[str] = None,
+        model: Optional[str] = None,
         is_published: Optional[bool] = None,
     ) -> str:
         """Update an existing Q&A pair.
@@ -406,6 +460,11 @@ def register_toll_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> None:
         this to iterate on shadow-page content (question phrasing, summary,
         full answer, slug, redirect target) until an agent retrieves the
         right answer for a given question.
+
+        Before updating, check the pair's current ``provider``/``model``
+        (from list_toll_qa_pairs) against your own identity — only edit
+        pairs that were created for you, unless the human operating you
+        explicitly asks you to touch another provider's entry.
 
         Args:
             site_id: The site UUID.
@@ -419,6 +478,10 @@ def register_toll_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> None:
                   for agents via answer_content).
             answer_content: New full markdown answer served inline to
                             agents and in llms-full.txt.
+            provider: New AI provider this pair is authored for. Leave unset
+                      unless you are deliberately reassigning ownership.
+            model: New specific model this pair is authored for. Leave
+                   unset unless you are deliberately reassigning ownership.
             is_published: Whether this pair appears in the public llms.txt.
                           Set to ``false`` to hide it without deleting it.
 
@@ -435,6 +498,8 @@ def register_toll_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> None:
                 redirect_url=redirect_url,
                 slug=slug,
                 answer_content=answer_content,
+                provider=provider,
+                model=model,
                 is_published=is_published,
             )
         )
@@ -525,7 +590,6 @@ def register_toll_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> None:
         utm_content: Optional[str] = None,
         utm_term: Optional[str] = None,
         request_host: Optional[str] = None,
-        session_id: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> str:
@@ -533,7 +597,12 @@ def register_toll_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> None:
 
         Unlike ``get_toll_traffic`` (time-bucketed aggregate counts), this
         returns raw, row-level events — useful for inspecting specific
-        traffic, campaign attribution, or every event in one session.
+        traffic or campaign attribution.
+
+        For privacy (GDPR), this never returns visitor-identifying data —
+        no IP, user agent, referer, or session linkage. Only which Q&A
+        page was hit (``qa_pair_id``), UTM/campaign context, and coarse
+        geo are included.
 
         Args:
             site_id: The site UUID.
@@ -550,7 +619,6 @@ def register_toll_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> None:
                           arrived on — useful when a site is served under a
                           client's own domain via a reverse proxy and may
                           drift from the site's configured domain.
-            session_id: Exact-match filter — all events belonging to one session.
             limit: Max rows to return (default 50, max 200).
             offset: Pagination offset.
 
@@ -570,7 +638,6 @@ def register_toll_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> None:
                 utm_content=utm_content,
                 utm_term=utm_term,
                 request_host=request_host,
-                session_id=session_id,
                 limit=limit,
                 offset=offset,
             )

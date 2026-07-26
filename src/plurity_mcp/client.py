@@ -163,20 +163,34 @@ class TollClient(_BaseClient):
         return self._patch(f"/api/v1/sites/{site_id}", body)
 
     # Q&A pairs
-    def list_qa_pairs(self, site_id: str) -> dict[str, Any]:
-        return self._get(f"/api/v1/sites/{site_id}/qa-pairs")
+    def list_qa_pairs(
+        self,
+        site_id: str,
+        provider: Optional[str] = None,
+        model: Optional[str] = None,
+    ) -> dict[str, Any]:
+        return self._get(
+            f"/api/v1/sites/{site_id}/qa-pairs", provider=provider, model=model
+        )
 
     def create_qa_pair(
         self,
         site_id: str,
         question: str,
         answer_url: str,
+        provider: str,
+        model: str,
         answer_summary: Optional[str] = None,
         redirect_url: Optional[str] = None,
         slug: Optional[str] = None,
         answer_content: Optional[str] = None,
     ) -> dict[str, Any]:
-        body: dict[str, Any] = {"question": question, "answer_url": answer_url}
+        body: dict[str, Any] = {
+            "question": question,
+            "answer_url": answer_url,
+            "provider": provider,
+            "model": model,
+        }
         if answer_summary is not None:
             body["answer_summary"] = answer_summary
         if redirect_url is not None:
@@ -197,6 +211,8 @@ class TollClient(_BaseClient):
         redirect_url: Optional[str] = None,
         slug: Optional[str] = None,
         answer_content: Optional[str] = None,
+        provider: Optional[str] = None,
+        model: Optional[str] = None,
         is_published: Optional[bool] = None,
     ) -> dict[str, Any]:
         body: dict[str, Any] = {}
@@ -212,6 +228,10 @@ class TollClient(_BaseClient):
             body["slug"] = slug
         if answer_content is not None:
             body["answer_content"] = answer_content
+        if provider is not None:
+            body["provider"] = provider
+        if model is not None:
+            body["model"] = model
         if is_published is not None:
             body["is_published"] = is_published
         return self._patch(f"/api/v1/sites/{site_id}/qa-pairs/{pair_id}", body)
@@ -252,7 +272,6 @@ class TollClient(_BaseClient):
         utm_content: Optional[str] = None,
         utm_term: Optional[str] = None,
         request_host: Optional[str] = None,
-        session_id: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> dict[str, Any]:
@@ -267,7 +286,6 @@ class TollClient(_BaseClient):
             utm_content=utm_content,
             utm_term=utm_term,
             request_host=request_host,
-            session_id=session_id,
             limit=limit,
             offset=offset,
         )
