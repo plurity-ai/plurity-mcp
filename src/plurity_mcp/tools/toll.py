@@ -6,6 +6,7 @@ import json
 from typing import TYPE_CHECKING, Optional
 
 from ..client import TollClient, PlurityAPIError
+from ..redact import redact_events_response, redact_site_response
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -62,23 +63,29 @@ def register_toll_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> None:
                     (e.g. "acme.com" or "docs.acme.com").
 
         Returns:
-            JSON with the created site including its ``id`` and ``site_key``
-            (needed for the tracking snippet).
+            JSON with the created site (``id``, ``name``, ``domain``, ...).
+            The site key needed for the tracking snippet is never returned
+            here — call ``get_toll_installation_instructions`` for
+            ready-to-paste install snippets.
         """
-        return _wrap(lambda c: c.create_site(name=name, domain=domain))
+        return _wrap(
+            lambda c: redact_site_response(c.create_site(name=name, domain=domain))
+        )
 
     @mcp.tool()
     def get_toll_site(site_id: str) -> str:
-        """Get full details for a Toll site, including the installation key.
+        """Get full details for a Toll site.
 
         Args:
             site_id: The site UUID.
 
         Returns:
-            JSON with site details including ``site_key``, ``llms_txt_mode``,
-            ``cache_ttl_secs``, ``llms_preamble``, and timestamps.
+            JSON with site details: ``llms_txt_mode``, ``cache_ttl_secs``,
+            ``llms_preamble``, and timestamps. The ``stk_`` site key is never
+            returned by this tool — use ``get_toll_installation_instructions``
+            when you need install snippets.
         """
-        return _wrap(lambda c: c.get_site(site_id=site_id))
+        return _wrap(lambda c: redact_site_response(c.get_site(site_id=site_id)))
 
     @mcp.tool()
     def update_toll_site(
@@ -113,13 +120,15 @@ def register_toll_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> None:
             JSON with the updated site.
         """
         return _wrap(
-            lambda c: c.update_site(
-                site_id=site_id,
-                name=name,
-                domain=domain,
-                cache_ttl_secs=cache_ttl_secs,
-                llms_txt_mode=llms_txt_mode,
-                llms_preamble=llms_preamble,
+            lambda c: redact_site_response(
+                c.update_site(
+                    site_id=site_id,
+                    name=name,
+                    domain=domain,
+                    cache_ttl_secs=cache_ttl_secs,
+                    llms_txt_mode=llms_txt_mode,
+                    llms_preamble=llms_preamble,
+                )
             )
         )
 
@@ -600,9 +609,10 @@ def register_toll_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> None:
         traffic or campaign attribution.
 
         For privacy (GDPR), this never returns visitor-identifying data —
-        no IP, user agent, referer, or session linkage. Only which Q&A
-        page was hit (``qa_pair_id``), UTM/campaign context, and coarse
-        geo are included.
+        no IP, user agent, referer, session linkage, coordinates, full URLs
+        (only the normalized ``page_path``), or customer-supplied
+        ``custom_fields``. Only which Q&A page was hit (``qa_pair_id``),
+        UTM/campaign context, and country/city-level geo are included.
 
         Args:
             site_id: The site UUID.
@@ -627,18 +637,20 @@ def register_toll_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> None:
             (matching row count before pagination), ``limit``, ``offset``.
         """
         return _wrap(
-            lambda c: c.list_events(
-                site_id=site_id,
-                since=since,
-                until=until,
-                agent_name=agent_name,
-                utm_source=utm_source,
-                utm_medium=utm_medium,
-                utm_campaign=utm_campaign,
-                utm_content=utm_content,
-                utm_term=utm_term,
-                request_host=request_host,
-                limit=limit,
-                offset=offset,
+            lambda c: redact_events_response(
+                c.list_events(
+                    site_id=site_id,
+                    since=since,
+                    until=until,
+                    agent_name=agent_name,
+                    utm_source=utm_source,
+                    utm_medium=utm_medium,
+                    utm_campaign=utm_campaign,
+                    utm_content=utm_content,
+                    utm_term=utm_term,
+                    request_host=request_host,
+                    limit=limit,
+                    offset=offset,
+                )
             )
         )
