@@ -1,6 +1,6 @@
 [project]
 name = "plurity-mcp"
-version = "0.1.2"
+version = "0.1.3"
 description = "Unified MCP server for all Plurity services (Audit, Toll, Intelligence)"
 readme = "README.md"
 license = { text = "MIT" }
@@ -25,6 +25,11 @@ Repository = "https://github.com/plurity-ai/plurity-mcp"
 [project.scripts]
 plurity-mcp = "plurity_mcp.server:main"
 plurity-mcp-setup = "plurity_mcp.setup:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
 
 [build-system]
 requires = ["hatchling"]

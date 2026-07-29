@@ -106,7 +106,7 @@ If the key is invalid the server exits immediately with a clear error message vi
 |---|---|
 | `list_toll_sites` | List your sites/pages |
 | `create_toll_site` | Create a new site |
-| `get_toll_site` | Get site details including site key |
+| `get_toll_site` | Get site details (the site key is only ever returned by `get_toll_installation_instructions`) |
 | `update_toll_site` | Update name, domain, cache TTL, llms.txt mode |
 | `get_toll_installation_instructions` | Get integration code snippets for HTML/Next.js/React/GTM |
 | `list_toll_qa_pairs` | List Q&A pairs in a site's llms.txt |
@@ -114,6 +114,8 @@ If the key is invalid the server exits immediately with a clear error message vi
 | `update_toll_qa_pair` | Edit a Q&A entry (or publish/unpublish it) |
 | `delete_toll_qa_pair` | Remove a Q&A entry |
 | `get_toll_traffic` | Agent traffic chart data (today/week/month/year) |
+| `list_toll_events` | Row-level events with UTM/host filters (visitor-identifying fields are redacted) |
+| `get_toll_llms_txt` | Fetch the currently served llms.txt body |
 
 ### Intelligence (question & topic monitoring)
 
