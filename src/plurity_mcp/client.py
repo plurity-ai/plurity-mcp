@@ -184,12 +184,14 @@ class TollClient(_BaseClient):
         redirect_url: Optional[str] = None,
         slug: Optional[str] = None,
         answer_content: Optional[str] = None,
+        is_ai_generated: bool = True,
     ) -> dict[str, Any]:
         body: dict[str, Any] = {
             "question": question,
             "answer_url": answer_url,
             "provider": provider,
             "model": model,
+            "is_ai_generated": is_ai_generated,
         }
         if answer_summary is not None:
             body["answer_summary"] = answer_summary
@@ -214,6 +216,7 @@ class TollClient(_BaseClient):
         provider: Optional[str] = None,
         model: Optional[str] = None,
         is_published: Optional[bool] = None,
+        is_ai_generated: Optional[bool] = None,
     ) -> dict[str, Any]:
         body: dict[str, Any] = {}
         if question is not None:
@@ -234,6 +237,8 @@ class TollClient(_BaseClient):
             body["model"] = model
         if is_published is not None:
             body["is_published"] = is_published
+        if is_ai_generated is not None:
+            body["is_ai_generated"] = is_ai_generated
         return self._patch(f"/api/v1/sites/{site_id}/qa-pairs/{pair_id}", body)
 
     def delete_qa_pair(self, site_id: str, pair_id: str) -> dict[str, Any]:

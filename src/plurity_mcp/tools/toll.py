@@ -356,8 +356,8 @@ def register_toll_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> None:
             JSON with a ``qa_pairs`` array. Each item has ``id``,
             ``question``, ``answer_url``, ``answer_summary``,
             ``redirect_url``, ``slug``, ``answer_content``, ``provider``,
-            ``model``, ``sort_order``, ``is_published``, ``created_at``,
-            ``updated_at``.
+            ``model``, ``is_ai_generated``, ``sort_order``, ``is_published``,
+            ``created_at``, ``updated_at``.
         """
         return _wrap(
             lambda c: c.list_qa_pairs(site_id=site_id, provider=provider, model=model)
@@ -374,6 +374,7 @@ def register_toll_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> None:
         redirect_url: Optional[str] = None,
         slug: Optional[str] = None,
         answer_content: Optional[str] = None,
+        is_ai_generated: bool = True,
     ) -> str:
         """Add a new Q&A pair to a Toll site's llms.txt.
 
@@ -416,6 +417,11 @@ def register_toll_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> None:
                             agents (via the slug) and included in
                             llms-full.txt. Use this for the complete,
                             detailed answer beyond the short summary.
+            is_ai_generated: Whether this pair's content was AI-generated.
+                              Defaults to ``true`` here (content authored via
+                              MCP is presumed AI-generated); pass ``false``
+                              if a human wrote or fully reviewed it. Shown
+                              to visitors and noted in llms.txt when true.
 
         Returns:
             JSON with the created Q&A pair, or a JSON ``error`` if
@@ -446,6 +452,7 @@ def register_toll_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> None:
                 redirect_url=redirect_url,
                 slug=slug,
                 answer_content=answer_content,
+                is_ai_generated=is_ai_generated,
             )
         )
 
@@ -462,6 +469,7 @@ def register_toll_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> None:
         provider: Optional[str] = None,
         model: Optional[str] = None,
         is_published: Optional[bool] = None,
+        is_ai_generated: Optional[bool] = None,
     ) -> str:
         """Update an existing Q&A pair.
 
@@ -493,6 +501,9 @@ def register_toll_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> None:
                    unset unless you are deliberately reassigning ownership.
             is_published: Whether this pair appears in the public llms.txt.
                           Set to ``false`` to hide it without deleting it.
+            is_ai_generated: Whether this pair's content was AI-generated.
+                              Shown to visitors and noted in llms.txt when
+                              true.
 
         Returns:
             JSON with the updated Q&A pair.
@@ -510,6 +521,7 @@ def register_toll_tools(mcp: "FastMCP", config: "PlurityMCPConfig") -> None:
                 provider=provider,
                 model=model,
                 is_published=is_published,
+                is_ai_generated=is_ai_generated,
             )
         )
 
